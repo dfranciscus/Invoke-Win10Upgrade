@@ -7,6 +7,7 @@ This module will use a combination of tools including Powershell, PSExec, and Mi
 # Prerequisites
 Computers must be joined to Active Directory<br>
 Module should be used with at least Local Admin privledges on workstations and permission to the MDT share.<br>
+PSExec installed - https://technet.microsoft.com/en-us/sysinternals/bb897553.aspx
 
 Powershell modules:<br>
 PSTerminalServices - https://psterminalservices.codeplex.com/<br>
