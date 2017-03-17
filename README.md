@@ -1,4 +1,4 @@
-# PSUpgradeWindows10
+# PSInPlaceWindows10Upgrade
 Powershell module for remote in-place upgrades of Windows 7/8 to Windows 10.
 
 # Overview
