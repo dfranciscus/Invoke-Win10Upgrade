@@ -1,8 +1,8 @@
 function Invoke-Windows10Upgrade {
     param
 	(
-		[Parameter(Mandatory=$true)]
-		[String[]]$ComputerName,
+	[Parameter(Mandatory=$true)]
+	[String[]]$ComputerName,
         [Parameter(Mandatory=$true)]
         [PSCredential]$Credential,
         [Parameter(Mandatory=$true)]
