@@ -18,45 +18,45 @@ Change values for deployroot, userdomain,userid,userpassword,eventservice,timezo
 
 #Bootstrap.ini:
 
-[Settings]
-Priority=Default
+[Settings]<br>
+Priority=Default<br>
 
-[Default]
-DeployRoot=MDTShare
-SkipBDDWelcome=YES
-UserDomain=DOMAIN
-UserID=User
-UserPassword=Password
+[Default]<br>
+DeployRoot=MDTShare<br>
+SkipBDDWelcome=YES<br>
+UserDomain=DOMAIN<br>
+UserID=User<br>
+UserPassword=Password<br>
 
-#CustomSettings.ini:
+#CustomSettings.ini:<br>
 
-[Settings]
-Priority=Default
-Properties=MyCustomProperty
+[Settings]<br>
+Priority=Default<br>
+Properties=MyCustomProperty<br>
 
-[Default]
-OSInstall=Y
-SkipCapture=NO
-SkipAdminPassword=YES
-SkipProductKey=YES
-SkipComputerBackup=NO
-SkipBitLocker=YES
-EventService=MDT service
-FinishAction=REBOOT
-ApplyGPOPack=NO
-SkipLocaleSelection=YES
-SkipAppsOnUpgrade=YES
-SkipDomainMembership=YES
-SkipComputerName=YES
-SkipTimeZone=YES
-TimeZoneName=Eastern Standard Time
-TimeZone=035
-SkipSummary=YES
-SkipFinalSummary=YES
-SkipUserData=YES
-SkipTaskSequence=YES
-TaskSequenceID=WIN10-INPLACE
-BuildID=WIN10-INPLACE
+[Default]<br>
+OSInstall=Y<br>
+SkipCapture=NO<br>
+SkipAdminPassword=YES<br>
+SkipProductKey=YES<br>
+SkipComputerBackup=NO<br>
+SkipBitLocker=YES<br>
+EventService=MDT service<br>
+FinishAction=REBOOT<br>
+ApplyGPOPack=NO<br>
+SkipLocaleSelection=YES<br>
+SkipAppsOnUpgrade=YES<br>
+SkipDomainMembership=YES<br>
+SkipComputerName=YES<br>
+SkipTimeZone=YES<br>
+TimeZoneName=Eastern Standard Time<br>
+TimeZone=035<br>
+SkipSummary=YES<br>
+SkipFinalSummary=YES<br>
+SkipUserData=YES<br>
+SkipTaskSequence=YES<br>
+TaskSequenceID=WIN10-INPLACE<br>
+BuildID=WIN10-INPLACE<br>
 
 
 
