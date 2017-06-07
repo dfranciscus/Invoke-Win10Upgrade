@@ -1,4 +1,4 @@
-function Invoke-Windows10Upgrade {
+function Invoke-Win10Upgrade {
     [CmdletBinding()]
     param
 	(
