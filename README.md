@@ -8,13 +8,55 @@ This module uses PowerShell and Microsoft Deployment Toolkit in order to remotel
 Computers must be joined to Active Directory<br>
 Module should be used with at least Local Admin privledges on workstations and permission to the MDT share.<br>
 
-Powershell modules:<br>
-Microsoft.BDD.PSSnapIn (Snap-in) - Get from your MDT Server, C:\Program Files\Microsoft Deployment Toolkit\Bin
-
 Microsoft Deployment Toolkit setup:<br>
 https://technet.microsoft.com/en-US/windows/dn475741<br>
 Use this guide to setup the Task Sequence<br>
 https://technet.microsoft.com/en-us/itpro/windows/deploy/upgrade-to-windows-10-with-the-microsoft-deployment-toolkit
+
+# Bootstrap and Customsettings
+Change values for deployroot, userdomain,userid,userpassword,eventservice,timezone,tasksequence,tasksequencebuild
+
+#Bootstrap.ini:
+
+[Settings]
+Priority=Default
+
+[Default]
+DeployRoot=MDTShare
+SkipBDDWelcome=YES
+UserDomain=DOMAIN
+UserID=User
+UserPassword=Password
+
+#CustomSettings.ini:
+
+[Settings]
+Priority=Default
+Properties=MyCustomProperty
+
+[Default]
+OSInstall=Y
+SkipCapture=NO
+SkipAdminPassword=YES
+SkipProductKey=YES
+SkipComputerBackup=NO
+SkipBitLocker=YES
+EventService=MDT service
+FinishAction=REBOOT
+ApplyGPOPack=NO
+SkipLocaleSelection=YES
+SkipAppsOnUpgrade=YES
+SkipDomainMembership=YES
+SkipComputerName=YES
+SkipTimeZone=YES
+TimeZoneName=Eastern Standard Time
+TimeZone=035
+SkipSummary=YES
+SkipFinalSummary=YES
+SkipUserData=YES
+SkipTaskSequence=YES
+TaskSequenceID=WIN10-INPLACE
+BuildID=WIN10-INPLACE
 
 
 
