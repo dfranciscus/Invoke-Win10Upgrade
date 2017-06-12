@@ -1,4 +1,4 @@
-function Invoke-Win10Upgrade {
+function Invoke-Windows10Upgrade {
     [CmdletBinding()]
     param
 	(
@@ -39,26 +39,30 @@ function Invoke-Win10Upgrade {
                 }
          }
         $ComputerName = Test-Ping -Computers $ComputerName 
+        if (!$ComputerName)
+        {
+            Write-Warning -Message 'No computers are online. Exiting.'
+            Break
+        }
 
         #Restart all computers
-        Restart-Computer -ComputerName $ComputerName -Force -Wait -For powershell -Timeout 300
+        Restart-Computer -ComputerName $ComputerName -Force -Wait -For powershell -Timeout 600
 
         #Create Scheduled task on remote computers
         $STUserName = $Credential.UserName
 
         Invoke-Command -ComputerName $ComputerName -ArgumentList {$STUsername,$MDTLiteTouchPath} -ScriptBlock {
-            schtasks.exe /ru $Using:STUserName /create /tn 'Upgrade to Windows 10' /tr "cscript $Using:MDTLiteTouchPath" /sc onlogon /RL HIGHEST /f /IT /DELAY 0000:30 
+            schtasks.exe /ru $Using:STUserName /create /tn 'Upgrade to Windows 10' /tr "powershell -command Start-Process -FilePath cscript -ArgumentList $Using:MDTLiteTouchPath" /sc onlogon /RL HIGHEST /f /IT /DELAY 0000:30 
         } 
         
-	    Write-Output 'Allow RDP'
+	Write-Output 'Allow RDP'
         #Allow RDP
-      <#  if ($AllowRDP)
+        if ($AllowRDP)
         {
             Invoke-Command –Computername $ComputerName –ScriptBlock {
                 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 0
-                Netsh advfirewall firewall set rule group=”remote desktop” new enable=yes 
-			}
-        } #>
+                Netsh advfirewall firewall set rule group=”remote desktop” new enable=yes }
+        } 
         
         Write-Output 'Connect RDP'
         #RDP using workflow into all computers in $ComputerName
@@ -77,7 +81,6 @@ function Invoke-Win10Upgrade {
             {
                 cmdkey.exe /generic:TERMSRV/$RDPComputer /user:$RDPUser /pass:$RDPPassword
                 Start-Process -FilePath mstsc.exe -ArgumentList "/v $RDPComputer" 
-                #Connect-Mstsc -ComputerName $RDPComputer -Credential $RDPCredential -Admin -Erroraction stop
             }
         }
         #Put start time in variable for MDT monitoring
@@ -85,7 +88,13 @@ function Invoke-Win10Upgrade {
         Connect-RDP -RDPComputers $ComputerName -RDPCredential $Credential 
         #Sleep to wait for litetouch to start
         Write-Output 'Sleep'
-        Start-Sleep -seconds 120
+        Start-Sleep -seconds 300
+
+        #Remove scheduled task
+        Write-Output 'Remove Scheduled Task'
+        Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+        schtasks.exe /Delete /TN 'Upgrade to Windows 10' /F  
+        }
 
         Write-Output 'Monitor MDT'
         #Monitor MDT results
@@ -118,30 +127,23 @@ function Invoke-Win10Upgrade {
                   Invoke-Command -ComputerName $MDTComputerName -ArgumentList $MDTRoot,$StartTime -ErrorAction Stop -ScriptBlock {
                       Add-PSSnapin Microsoft.BDD.PSSnapIn | Out-null
                       New-PSDrive -Name "DS001" -PSProvider "MDTProvider" -Root $Using:MDTRoot | Out-null 
-                      Get-MDTMonitorData -Path DS001: | Where-Object {$_.StartTime -gt $Using:StartTime} | Select-Object name,percentcomplete,errors,starttime | Sort-Object -Property starttime -Descending | Format-Table -AutoSize }
+                      Get-MDTMonitorData -Path DS001: | Where-Object {$_.StartTime -gt $Using:StartTime} | Select-Object name,percentcomplete,errors,starttime | Sort-Object -Property starttime -Descending | Format-Table -Property @{Expression={$_.StartTime.ToLocalTime()};Label="StartTime"},name,percentcomplete,errors -AutoSize }
             }
             else 
             {
-                $AllDone -eq '1'
+                $AllDone = '1'
                 Write-Warning -Message 'Deployment Complete'
             }
             Start-Sleep -Seconds 60
         }
 
-        #Remove scheduled task
-        Write-Output 'Remove Scheduled Task'
-        Invoke-Command -ComputerName $ComputerName -ScriptBlock {
-        schtasks.exe /Delete /TN 'Upgrade to Windows 10' /F  
-        }
         #Disable RDP
-      <#  if ($DisableRDP)
+        if ($DisableRDP)
         {
             Invoke-Command –Computername $ComputerName –ScriptBlock {
                Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1
-               Netsh advfirewall firewall set rule group=”remote desktop” new enable=no  
-               }
-        } #>
-        
+               Netsh advfirewall firewall set rule group=”remote desktop” new enable=no }
+        }   
     }
 }
 
