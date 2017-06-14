@@ -1,3 +1,5 @@
+#requires -Version 4
+#requires -RunAsAdministrator
 function Invoke-Windows10Upgrade {
     [CmdletBinding()]
     param
@@ -55,7 +57,6 @@ function Invoke-Windows10Upgrade {
             schtasks.exe /ru $Using:STUserName /create /tn 'Upgrade to Windows 10' /tr "powershell -command Start-Process -FilePath cscript -ArgumentList $Using:MDTLiteTouchPath" /sc onlogon /RL HIGHEST /f /IT /DELAY 0000:30 
         } 
         
-	Write-Output 'Allow RDP'
         #Allow RDP
         if ($AllowRDP)
         {
@@ -64,7 +65,6 @@ function Invoke-Windows10Upgrade {
                 Netsh advfirewall firewall set rule group=”remote desktop” new enable=yes }
         } 
         
-        Write-Output 'Connect RDP'
         #RDP using workflow into all computers in $ComputerName
         workflow Connect-RDP
         {
@@ -87,16 +87,13 @@ function Invoke-Windows10Upgrade {
         $StartTime =  (Get-Date).ToUniversalTime()
         Connect-RDP -RDPComputers $ComputerName -RDPCredential $Credential 
         #Sleep to wait for litetouch to start
-        Write-Output 'Sleep'
         Start-Sleep -seconds 300
 
         #Remove scheduled task
-        Write-Output 'Remove Scheduled Task'
         Invoke-Command -ComputerName $ComputerName -ScriptBlock {
         schtasks.exe /Delete /TN 'Upgrade to Windows 10' /F  
         }
 
-        Write-Output 'Monitor MDT'
         #Monitor MDT results
         try 
         {
