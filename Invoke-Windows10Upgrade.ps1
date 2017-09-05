@@ -8,16 +8,18 @@ function Invoke-Windows10Upgrade {
 	[String[]]$ComputerName,
         [Parameter(Mandatory=$true)]
         [PSCredential]$Credential,
-        [Parameter(Mandatory=$true)]
-        [String]$MDTLiteTouchPath,
-        [Parameter(Mandatory=$true)]
-        [String]$MDTComputerName,
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$false)]
+        [String]$MDTLiteTouchPath, 
+        [Parameter(Mandatory=$false)]
+        [String]$MDTComputerName, 
+        [Parameter(Mandatory=$false)]
         [String]$MDTRoot,
         [Parameter(Mandatory=$False)]
         [Switch]$AllowRDP,
         [Parameter(Mandatory=$False)]
-        [Switch]$DisableRDP 
+        [Switch]$DisableRDP,
+        [Parameter(Mandatory=$False)]
+        [Switch]$AllowRegUpgrade
 	)
     process
     {
@@ -64,7 +66,20 @@ function Invoke-Windows10Upgrade {
                 Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 0
                 Netsh advfirewall firewall set rule group=”remote desktop” new enable=yes }
         } 
-        
+
+        #Allow disableosupgrade in registry
+        if ($AllowRegUpgrade)
+        {
+             Invoke-Command –Computername $ComputerName –ScriptBlock {
+                gpupdate /force | Out-Null
+                Set-ItemProperty -Path "HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate" -Name "DisableOSUpgrade" –Value 0 }
+        }
+		
+		#Remove old deployment logs
+		Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+				Remove-Item 'C:\Windows\Temp\DeploymentLogs' -Recurse -Force -Confirm:$False -ErrorAction SilentlyContinue
+        }
+                  
         #RDP using workflow into all computers in $ComputerName
         workflow Connect-RDP
         {
@@ -93,14 +108,16 @@ function Invoke-Windows10Upgrade {
         Invoke-Command -ComputerName $ComputerName -ScriptBlock {
         schtasks.exe /Delete /TN 'Upgrade to Windows 10' /F  
         }
+        #Get end time for filtering MDT results
+        $EndStartTime =  (Get-Date).ToUniversalTime()
 
         #Monitor MDT results
         try 
         {
-            $Results = Invoke-Command -ComputerName $MDTComputerName -ArgumentList $MDTRoot,$StartTime -ErrorAction Stop -ScriptBlock {
+            $Results = Invoke-Command -ComputerName $MDTComputerName -ArgumentList $MDTRoot,$StartTime,$EndStartTime -ErrorAction Stop -ScriptBlock {
                 Add-PSSnapin Microsoft.BDD.PSSnapIn | Out-null
                 New-PSDrive -Name "DS001" -PSProvider "MDTProvider" -Root $Using:MDTRoot | out-null
-                Get-MDTMonitorData -Path DS001: | Where-Object {$_.PercentComplete -ne '100' -and $_.StartTime -gt $Using:StartTime} | Select-Object name,percentcomplete,errors,starttime | Sort-Object -Property starttime -Descending | Format-Table -AutoSize }
+                Get-MDTMonitorData -Path DS001: | Where-Object {$_.PercentComplete -ne '100' -and $_.StartTime -gt $Using:StartTime -and $_.StartTime -lt $Using:EndStartTime -and $_.DeploymentStatus -eq '1'} | Select-Object name,percentcomplete,errors,starttime | Sort-Object -Property starttime -Descending | Format-Table -AutoSize }
             if (!$Results)
             {
                 Write-Warning -Message 'No MDT Monitoring data found. Investigate and press enter to continue'
@@ -112,19 +129,21 @@ function Invoke-Windows10Upgrade {
             Write-Error $_
             Read-Host "Press enter to continue" 
         }
-
+        #Get end time for filtering MDT results
+        $EndStartTime = (Get-Date).ToUniversalTime()
         While ($AllDone -ne '1')
         {
-            $Results = Invoke-Command -ComputerName $MDTComputerName -ArgumentList $MDTRoot,$StartTime -ErrorAction Stop -ScriptBlock {
+            $Results = $Null
+            $Results = Invoke-Command -ComputerName $MDTComputerName -ArgumentList $MDTRoot,$StartTime,$EndStartTime -ErrorAction Stop -ScriptBlock {
                 Add-PSSnapin Microsoft.BDD.PSSnapIn | Out-null
                 New-PSDrive -Name "DS001" -PSProvider "MDTProvider" -Root $Using:MDTRoot | Out-null
-                Get-MDTMonitorData -Path DS001: | Where-Object {$_.PercentComplete -ne '100' -and $_.StartTime -gt $Using:StartTime} | Select-Object name,percentcomplete,errors,starttime | Sort-Object -Property starttime -Descending | Format-Table -AutoSize }
+                Get-MDTMonitorData -Path DS001: | Where-Object {$_.StartTime -gt $Using:StartTime -and $_.StartTime -lt $Using:EndStartTime -and $_.EndTime -eq $null} | Select-Object name,percentcomplete,errors,starttime | Sort-Object -Property starttime -Descending | Format-Table -AutoSize }
             if ($Results)
             {
-                  Invoke-Command -ComputerName $MDTComputerName -ArgumentList $MDTRoot,$StartTime -ErrorAction Stop -ScriptBlock {
+                  Invoke-Command -ComputerName $MDTComputerName -ArgumentList $MDTRoot,$StartTime,$EndStartTime -ErrorAction Stop -ScriptBlock {
                       Add-PSSnapin Microsoft.BDD.PSSnapIn | Out-null
                       New-PSDrive -Name "DS001" -PSProvider "MDTProvider" -Root $Using:MDTRoot | Out-null 
-                      Get-MDTMonitorData -Path DS001: | Where-Object {$_.StartTime -gt $Using:StartTime} | Select-Object name,percentcomplete,errors,starttime | Sort-Object -Property starttime -Descending | Format-Table -Property @{Expression={$_.StartTime.ToLocalTime()};Label="StartTime"},name,percentcomplete,errors -AutoSize }
+                      Get-MDTMonitorData -Path DS001: | Where-Object {$_.StartTime -gt $Using:StartTime -and $_.StartTime -lt $Using:EndStartTime} | Select-Object name,percentcomplete,errors,starttime | Sort-Object -Property starttime -Descending | Format-Table -Property @{Expression={$_.StartTime.ToLocalTime()};Label="StartTime"},name,percentcomplete,errors -AutoSize }
             }
             else 
             {
@@ -132,8 +151,12 @@ function Invoke-Windows10Upgrade {
                 Write-Warning -Message 'Deployment Complete'
             }
             Start-Sleep -Seconds 60
+             $Results = Invoke-Command -ComputerName $MDTComputerName -ArgumentList $MDTRoot,$StartTime,$EndStartTime -ErrorAction Stop -ScriptBlock {
+                Add-PSSnapin Microsoft.BDD.PSSnapIn | Out-null
+                New-PSDrive -Name "DS001" -PSProvider "MDTProvider" -Root $Using:MDTRoot | out-null
+                Get-MDTMonitorData -Path DS001: | Where-Object { $_.StartTime -gt $Using:StartTime -and $_.StartTime -lt $Using:EndStartTime} | Select-Object * | Sort-Object -Property starttime -Descending | Format-List }
         }
-
+        
         #Disable RDP
         if ($DisableRDP)
         {
@@ -141,8 +164,6 @@ function Invoke-Windows10Upgrade {
                Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1
                Netsh advfirewall firewall set rule group=”remote desktop” new enable=no }
         }   
+
     }
 }
-
-
-
