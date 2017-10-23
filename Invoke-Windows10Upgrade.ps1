@@ -161,7 +161,7 @@ function Invoke-Windows10Upgrade {
         if ($DisableRDP)
         {
             Invoke-Command –Computername $ComputerName –ScriptBlock {
-               Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" –Value 1
+               Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name "fDenyTSConnections" -Value 1
                Netsh advfirewall firewall set rule group=”remote desktop” new enable=no }
         }   
 
